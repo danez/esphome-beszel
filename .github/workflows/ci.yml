@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  host-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: sudo apt-get update && sudo apt-get install -y libsodium-dev
+      - run: pip install esphome==2026.9.0
+      - name: Run host tests
+        run: |
+          CXXFLAGS="-std=c++17 -Wall -Wextra -Werror -fsanitize=address,undefined"
+          g++ $CXXFLAGS tests/protocol_test.cpp components/beszel/cbor.cpp -o /tmp/protocol_test
+          /tmp/protocol_test
+          g++ $CXXFLAGS tests/websocket_message_test.cpp components/beszel/websocket_message.cpp -o /tmp/websocket_message_test
+          /tmp/websocket_message_test
+          g++ $CXXFLAGS tests/crypto_test.cpp components/beszel/crypto.cpp -lsodium -o /tmp/crypto_test
+          /tmp/crypto_test
+          python tests/config_validation_test.py
+
+  firmware:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        config:
+          - examples/esp32.yaml
+          - examples/esp32-s3.yaml
+          - tests/firmware/esp32-crypto.yaml
+          - tests/firmware/esp32-s3-crypto.yaml
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install esphome==2026.9.0
+      - name: Create test secrets
+        run: |
+          printf '%s\n' \
+            'wifi_ssid: ci-network' \
+            'wifi_password: ci-password' \
+            'noise_key: AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=' \
+            'beszel_token: ci-token' \
+            'beszel_hub_public_key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea' \
+            > examples/secrets.yaml
+      - run: esphome compile "${{ matrix.config }}"

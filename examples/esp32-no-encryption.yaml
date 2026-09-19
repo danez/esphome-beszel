@@ -1,0 +1,23 @@
+esphome:
+  name: beszel-esp32-no-encryption
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+logger:
+
+beszel:
+  hub: https://beszel.example.com
+  token: !secret beszel_token
+  key: !secret beszel_hub_public_key
