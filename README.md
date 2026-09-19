@@ -6,9 +6,9 @@ or a separate Beszel agent process.
 
 ## Requirements
 
-- Beszel Hub 0.19.x or 0.20.x
-- ESPHome 2026.9.0
-- ESP-IDF framework
+- [Beszel Hub](https://beszel.dev/) 0.19.x or 0.20.x
+- [ESPHome](https://github.com/esphome/esphome) 2026.9.0
+- [ESP-IDF](https://github.com/espressif/esp-idf) framework
 - ESP32 or ESP32-S3
 
 Arduino and other ESP32 variants are rejected during configuration. The
