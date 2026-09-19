@@ -76,6 +76,15 @@ the transmitted byte and GiB values are correct. Beszel 0.20 network monitoring
 is not supported; the component advertises the 0.19 agent capability level so
 the Hub does not expose or request that feature.
 
+## Flash usage
+
+On an `esp32dev` build with ESPHome 2026.9.0 and ESP-IDF 5.5.5, adding the
+component increases the firmware image by approximately 139 KiB when ESPHome
+API encryption is enabled, or 150 KiB without API encryption. The smaller
+increase with API encryption is because libsodium is already linked into the
+firmware. These figures include the component's secure WebSocket, TLS, and
+cryptographic dependencies.
+
 ## TLS and security
 
 Secure connections use ESP-IDF's built-in Common CA bundle and verify the Hub
