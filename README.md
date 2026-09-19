@@ -83,9 +83,8 @@ certificate. This works with publicly trusted certificates such as Let's
 Encrypt. Custom CA certificates are not supported in the first release, and
 certificate verification cannot be disabled.
 
-Plain `http://` URLs are supported for local development and produce a warning.
-They send the token without transport encryption and should not be used across
-an untrusted network.
+HTTPS is required. Plain `http://` URLs are rejected because they would expose
+the token and WebSocket traffic without transport encryption.
 
 The Hub authenticates by signing the configured token with Ed25519. The agent
 uses the factory Wi-Fi MAC to derive a stable fingerprint for per-system and

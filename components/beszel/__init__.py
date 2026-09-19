@@ -22,15 +22,15 @@ Beszel = beszel_ns.class_("Beszel", cg.Component)
 
 def validate_hub(value):
     if not isinstance(value, str) or any(ord(char) < 32 or ord(char) == 127 for char in value):
-        raise cv.Invalid("hub must be an absolute http:// or https:// URL")
+        raise cv.Invalid("hub must be an absolute https:// URL")
     try:
         parsed = urlparse(value)
         hostname = parsed.hostname
         parsed.port  # Validate bracket and port syntax even though netloc is preserved below.
     except ValueError as err:
-        raise cv.Invalid("hub must be an absolute http:// or https:// URL") from err
-    if parsed.scheme not in ("http", "https") or not hostname:
-        raise cv.Invalid("hub must be an absolute http:// or https:// URL with a host")
+        raise cv.Invalid("hub must be an absolute https:// URL") from err
+    if parsed.scheme != "https" or not hostname:
+        raise cv.Invalid("hub must be an absolute https:// URL with a host")
     if parsed.username is not None or parsed.password is not None:
         raise cv.Invalid("hub must not contain credentials")
     if any(char.isspace() or ord(char) < 32 or ord(char) == 127 for char in hostname):
@@ -42,8 +42,7 @@ def validate_hub(value):
     # configuration stable when a user copies the endpoint from another agent.
     if not path.endswith(AGENT_ENDPOINT):
         path += AGENT_ENDPOINT
-    scheme = "ws" if parsed.scheme == "http" else "wss"
-    return f"{scheme}://{parsed.netloc}{path}"
+    return f"wss://{parsed.netloc}{path}"
 
 
 def validate_token(value):

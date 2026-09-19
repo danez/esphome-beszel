@@ -128,6 +128,11 @@ bool Beszel::handle_check_fingerprint_(const HubRequest &request, uint8_t *outpu
 
 void Beszel::setup() {
   this->set_pending_status_(DISCONNECTED);
+  if (this->hub_.rfind("wss://", 0) != 0) {
+    ESP_LOGE(TAG, "Secure WebSocket transport is required");
+    this->mark_failed();
+    return;
+  }
   // Host builds initialize the complete libsodium library. The ESPHome port
   // uses only deterministic primitives and intentionally skips its unusable
   // Unix random backend; initialize_crypto() documents that platform split.
@@ -142,8 +147,6 @@ void Beszel::setup() {
   // one. Otherwise the hidden reader preserves Beszel's zero-config behavior.
   // Temperature is useful diagnostics but is not required for Hub operation.
   this->temperature_available_ = this->setup_internal_temperature_();
-  if (this->hub_.rfind("ws://", 0) == 0)
-    ESP_LOGW(TAG, "Plain WebSocket transport is insecure; use https:// for production");
 }
 
 void Beszel::loop() {
@@ -211,8 +214,7 @@ void Beszel::loop() {
   config.ping_interval_sec = 10;
   config.reconnect_timeout_ms = 10000;
   config.enable_close_reconnect = true;
-  if (this->hub_.rfind("wss://", 0) == 0)
-    config.crt_bundle_attach = esp_crt_bundle_attach;
+  config.crt_bundle_attach = esp_crt_bundle_attach;
 
   this->client_ = esp_websocket_client_init(&config);
   if (this->client_ == nullptr) {

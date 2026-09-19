@@ -23,7 +23,7 @@ wifi:
 logger:
 
 beszel:
-  hub: http://127.0.0.1
+  hub: https://127.0.0.1
   token: test-token
   key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea
 

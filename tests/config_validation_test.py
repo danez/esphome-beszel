@@ -26,7 +26,7 @@ assert rejects(beszel.validate_token, "tab\tbyte")
 assert rejects(beszel.validate_token, "unicode-control\u0085byte")
 
 endpoint = "/api/beszel/agent-connect"
-assert beszel.validate_hub("http://hub.local") == f"ws://hub.local{endpoint}"
+assert rejects(beszel.validate_hub, "http://hub.local")
 assert beszel.validate_hub("https://hub.example/base/") == f"wss://hub.example/base{endpoint}"
 assert beszel.validate_hub(f"https://hub.example{endpoint}") == f"wss://hub.example{endpoint}"
 assert beszel.validate_hub(f"https://hub.example{endpoint}/") == f"wss://hub.example{endpoint}"
