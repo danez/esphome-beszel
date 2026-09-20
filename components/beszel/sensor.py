@@ -2,6 +2,7 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import sensor
 from esphome.const import (
+    DEVICE_CLASS_DATA_SIZE,
     ENTITY_CATEGORY_DIAGNOSTIC,
     ICON_MEMORY,
     STATE_CLASS_MEASUREMENT,
@@ -20,6 +21,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.GenerateID(CONF_BESZEL_ID): cv.use_id(Beszel),
         cv.Required(CONF_STACK_HEADROOM): sensor.sensor_schema(
             accuracy_decimals=0,
+            device_class=DEVICE_CLASS_DATA_SIZE,
             entity_category=ENTITY_CATEGORY_DIAGNOSTIC,
             icon=ICON_MEMORY,
             state_class=STATE_CLASS_MEASUREMENT,

@@ -59,7 +59,8 @@ text_sensor:
 
 It publishes only `disconnected`, `connecting`, `authenticating`, or
 `connected`. State publication occurs from ESPHome's main loop, not from the
-WebSocket callback task.
+WebSocket callback task. Its entity category defaults to `diagnostic` and can
+be overridden in the entity configuration.
 
 The lowest observed WebSocket-task stack headroom during authentication can
 also be exposed as a diagnostic sensor:
@@ -72,7 +73,8 @@ sensor:
 ```
 
 The value is reported in bytes after authentication attempts. Lower values
-mean the task came closer to exhausting its stack.
+mean the task came closer to exhausting its stack. Its entity category also
+defaults to `diagnostic` and can be overridden.
 
 ## Reported data
 
