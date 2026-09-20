@@ -7,7 +7,7 @@
 #include <string>
 
 #include "esp_websocket_client.h"
-#ifdef CONFIG_IDF_TARGET_ESP32S3
+#if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3)
 #include "driver/temperature_sensor.h"
 #endif
 
@@ -28,6 +28,7 @@ class Beszel : public Component {
   void set_token(const char *token) { this->token_ = token; }
   void set_public_key(const std::array<uint8_t, 32> &key) { this->public_key_ = key; }
   void set_temperature_sensor(sensor::Sensor *sensor) { this->temperature_sensor_source_ = sensor; }
+  void set_stack_headroom_sensor(sensor::Sensor *sensor) { this->stack_headroom_sensor_ = sensor; }
   void set_status_sensor(text_sensor::TextSensor *sensor) { this->status_sensor_ = sensor; }
 
  protected:
@@ -39,6 +40,7 @@ class Beszel : public Component {
   bool setup_internal_temperature_();
   bool read_internal_temperature_(float &temperature) const;
   void shutdown_internal_temperature_();
+  void record_stack_headroom_();
   bool handle_check_fingerprint_(const HubRequest &request, uint8_t *output, size_t output_size,
                                  const char *node_name, size_t *written = nullptr);
   static void websocket_event_(void *arg, esp_event_base_t base, int32_t event_id, void *event_data);
@@ -62,10 +64,13 @@ class Beszel : public Component {
   // Main-task-only snapshot used to publish each Wi-Fi transition once.
   bool network_available_{false};
   // Set only when the user configured ESPHome's internal_temperature sensor.
-  // Reading its published state avoids installing the S3 hardware driver twice.
+  // Reading its published state avoids installing the C3/S3 hardware driver twice.
   sensor::Sensor *temperature_sensor_source_{nullptr};
+  sensor::Sensor *stack_headroom_sensor_{nullptr};
+  std::atomic<uint32_t> stack_headroom_{UINT32_MAX};
+  uint32_t published_stack_headroom_{UINT32_MAX};
   text_sensor::TextSensor *status_sensor_{nullptr};
-#ifdef CONFIG_IDF_TARGET_ESP32S3
+#if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3)
   temperature_sensor_handle_t temperature_sensor_{nullptr};
 #endif
   bool temperature_available_{false};

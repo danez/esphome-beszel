@@ -87,12 +87,12 @@ def validate_key(value):
 
 def validate_target(config):
     if CORE.target_platform != "esp32":
-        raise cv.Invalid("beszel supports only ESP32 and ESP32-S3 targets")
+        raise cv.Invalid("beszel supports only ESP32, ESP32-C3, and ESP32-S3 targets")
     core_data = CORE.data[KEY_CORE]
     if core_data.get(KEY_TARGET_FRAMEWORK) != "esp-idf":
         raise cv.Invalid("beszel requires the ESP-IDF framework")
-    if CORE.data.get("esp32", {}).get(KEY_VARIANT) not in ("ESP32", "ESP32S3"):
-        raise cv.Invalid("beszel supports only ESP32 and ESP32-S3 targets")
+    if CORE.data.get("esp32", {}).get(KEY_VARIANT) not in ("ESP32", "ESP32C3", "ESP32S3"):
+        raise cv.Invalid("beszel supports only ESP32, ESP32-C3, and ESP32-S3 targets")
     return config
 
 
@@ -147,7 +147,7 @@ async def to_code(config):
 
     internal_temperature_sensors = _internal_temperature_sensors(CORE.config)
     if internal_temperature_sensors:
-        # Reuse the user's sensor so only one component owns the ESP32-S3
+        # Reuse the user's sensor so only one component owns the ESP32-C3/S3
         # temperature driver. With no configured sensor, Beszel uses its own
         # hidden reader and remains zero-configuration.
         temperature_sensor = await cg.get_variable(

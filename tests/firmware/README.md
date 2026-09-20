@@ -8,6 +8,7 @@ Flash the configuration matching the connected board:
 
 ```sh
 esphome run tests/firmware/esp32-crypto.yaml
+esphome run tests/firmware/esp32-c3-crypto.yaml
 esphome run tests/firmware/esp32-s3-crypto.yaml
 ```
 

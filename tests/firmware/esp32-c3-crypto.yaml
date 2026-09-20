@@ -1,0 +1,30 @@
+esphome:
+  name: beszel-crypto-esp32-c3
+
+esp32:
+  board: esp32-c3-devkitm-1
+  variant: ESP32C3
+  framework:
+    type: esp-idf
+
+external_components:
+  - source:
+      type: local
+      path: ../../components
+  - source:
+      type: local
+      path: ../components
+
+wifi:
+  ssid: firmware-test
+  password: firmware-test
+  enable_on_boot: false
+
+logger:
+
+beszel:
+  hub: https://127.0.0.1
+  token: test-token
+  key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINdamAGCsQq31Uv+08lkBzoO4XLz2qYjJa8CGmj3B1Ea
+
+beszel_crypto_test:

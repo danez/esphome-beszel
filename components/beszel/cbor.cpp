@@ -231,7 +231,7 @@ bool encode_system_details(CborWriter &writer, const SystemMetrics &metrics) {
          writer.uint64(4) && writer.text(metrics.chip_model) &&
          writer.uint64(5) && writer.uint64(0) &&
          writer.uint64(6) && writer.text(metrics.esphome_version) &&
-         writer.uint64(7) && writer.text("xtensa") &&
+         writer.uint64(7) && writer.text(metrics.architecture) &&
          writer.uint64(9) && writer.uint64(metrics.total_heap);
 }
 

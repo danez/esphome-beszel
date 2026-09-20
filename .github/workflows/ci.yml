@@ -31,8 +31,10 @@ jobs:
       matrix:
         config:
           - examples/esp32.yaml
+          - examples/esp32-c3.yaml
           - examples/esp32-s3.yaml
           - tests/firmware/esp32-crypto.yaml
+          - tests/firmware/esp32-c3-crypto.yaml
           - tests/firmware/esp32-s3-crypto.yaml
     steps:
       - uses: actions/checkout@v4

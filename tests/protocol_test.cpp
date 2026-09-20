@@ -92,6 +92,12 @@ static void populated_data_response() {
   assert(std::string(reinterpret_cast<char *>(output), written) == expected);
   assert(!esphome::beszel::encode_data_response(output, 4, 42, metrics));
 
+  metrics.architecture = "riscv";
+  assert(esphome::beszel::encode_data_response(output, sizeof(output), 42, metrics, &written));
+  const std::string riscv_response(reinterpret_cast<char *>(output), written);
+  assert(riscv_response.find("riscv") != std::string::npos);
+  assert(riscv_response.find("xtensa") == std::string::npos);
+
   // Invalid free-heap values are clamped to zero used memory. Comparing them
   // with their valid zero-used counterparts also catches NaN or underflow.
   uint8_t valid[512]{};

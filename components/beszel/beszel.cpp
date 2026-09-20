@@ -49,12 +49,18 @@ void Beszel::clear_authentication_() { this->authenticated_.store(false); }
 
 bool Beszel::is_authenticated_() const { return this->authenticated_.load(); }
 
+void Beszel::record_stack_headroom_() {
+  const uint32_t headroom = uxTaskGetStackHighWaterMark(nullptr);
+  uint32_t lowest = this->stack_headroom_.load();
+  while (headroom < lowest && !this->stack_headroom_.compare_exchange_weak(lowest, headroom)) {}
+}
+
 bool Beszel::setup_internal_temperature_() {
   // A configured ESPHome internal_temperature sensor owns the hardware. Its
-  // state is read below, so Beszel must not install a second S3 driver handle.
+  // state is read below, so Beszel must not install a second driver handle.
   if (this->temperature_sensor_source_ != nullptr)
     return true;
-#ifdef CONFIG_IDF_TARGET_ESP32S3
+#if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3)
   temperature_sensor_config_t config = TEMPERATURE_SENSOR_CONFIG_DEFAULT(-10, 80);
   esp_err_t result = temperature_sensor_install(&config, &this->temperature_sensor_);
   if (result == ESP_OK)
@@ -78,7 +84,7 @@ bool Beszel::read_internal_temperature_(float &temperature) const {
     temperature = this->temperature_sensor_source_->state;
     return std::isfinite(temperature);
   }
-#ifdef CONFIG_IDF_TARGET_ESP32S3
+#if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3)
   if (this->temperature_sensor_ == nullptr ||
       temperature_sensor_get_celsius(this->temperature_sensor_, &temperature) != ESP_OK)
     return false;
@@ -91,7 +97,7 @@ bool Beszel::read_internal_temperature_(float &temperature) const {
 }
 
 void Beszel::shutdown_internal_temperature_() {
-#ifdef CONFIG_IDF_TARGET_ESP32S3
+#if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3)
   if (this->temperature_sensor_ != nullptr) {
     temperature_sensor_disable(this->temperature_sensor_);
     temperature_sensor_uninstall(this->temperature_sensor_);
@@ -150,6 +156,13 @@ void Beszel::setup() {
 }
 
 void Beszel::loop() {
+  const uint32_t stack_headroom = this->stack_headroom_.load();
+  if (this->stack_headroom_sensor_ != nullptr && stack_headroom != UINT32_MAX &&
+      stack_headroom != this->published_stack_headroom_) {
+    this->published_stack_headroom_ = stack_headroom;
+    this->stack_headroom_sensor_->publish_state(stack_headroom);
+  }
+
   const auto status = this->pending_status_.exchange(0);
   if (status != 0) {
     const char *state = nullptr;
@@ -345,6 +358,7 @@ void Beszel::consume_message_(esp_websocket_client_handle_t client, const uint8_
   size_t response_size = 0;
   bool encoded = false;
   if (request.action == 1) {
+    this->record_stack_headroom_();
     ESP_LOGD(TAG, "Fingerprint verification starting: stack_free=%u",
              static_cast<unsigned>(uxTaskGetStackHighWaterMark(nullptr)));
     // Universal tokens use both response fields as the persistent Hub system
@@ -352,6 +366,7 @@ void Beszel::consume_message_(esp_websocket_client_handle_t client, const uint8_
     // shared by every device.
     encoded = this->handle_check_fingerprint_(request, response.data(), response.size(),
                                               App.get_name().c_str(), &response_size);
+    this->record_stack_headroom_();
     ESP_LOGD(TAG, "Fingerprint verification: authenticated=%d encoded=%d response=%u stack_free=%u",
              this->is_authenticated_(), encoded, static_cast<unsigned>(response_size),
              static_cast<unsigned>(uxTaskGetStackHighWaterMark(nullptr)));
@@ -382,7 +397,10 @@ void Beszel::consume_message_(esp_websocket_client_handle_t client, const uint8_
     metrics.uptime_seconds = static_cast<uint64_t>(esp_timer_get_time()) / 1000000ULL;
     metrics.hostname = App.get_name().c_str();
     metrics.idf_version = esp_get_idf_version();
-#ifdef CONFIG_IDF_TARGET_ESP32S3
+#ifdef CONFIG_IDF_TARGET_ESP32C3
+    metrics.chip_model = "ESP32-C3";
+    metrics.architecture = "riscv";
+#elif defined(CONFIG_IDF_TARGET_ESP32S3)
     metrics.chip_model = "ESP32-S3";
 #else
     metrics.chip_model = "ESP32";

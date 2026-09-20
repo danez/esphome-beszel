@@ -77,6 +77,7 @@ struct SystemMetrics {
   const char *hostname{nullptr};
   const char *idf_version{nullptr};
   const char *chip_model{nullptr};
+  const char *architecture{"xtensa"};
   const char *esphome_version{nullptr};
   uint8_t cores{1};
   // Beszel stores temperatures as a named Celsius map. Keep the value inline

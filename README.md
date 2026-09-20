@@ -9,10 +9,12 @@ or a separate Beszel agent process.
 - [Beszel Hub](https://beszel.dev/) 0.19.x or 0.20.x
 - [ESPHome](https://github.com/esphome/esphome) 2026.9.0
 - [ESP-IDF](https://github.com/espressif/esp-idf) framework
-- ESP32 or ESP32-S3
+- ESP32, ESP32-C3, or ESP32-S3
 
-Arduino and other ESP32 variants are rejected during configuration. The
-component currently pins the ESPHome libsodium package used by ESPHome 2026.9,
+Arduino and other ESP32 variants are rejected during configuration. ESP32-C3
+support is compile-tested but still requires the RISC-V hardware validation
+listed in `work/revied.md`. The component currently pins the ESPHome libsodium
+package used by ESPHome 2026.9,
 so other ESPHome releases are not supported yet.
 
 ## Installation
@@ -58,6 +60,19 @@ text_sensor:
 It publishes only `disconnected`, `connecting`, `authenticating`, or
 `connected`. State publication occurs from ESPHome's main loop, not from the
 WebSocket callback task.
+
+The lowest observed WebSocket-task stack headroom during authentication can
+also be exposed as a diagnostic sensor:
+
+```yaml
+sensor:
+  - platform: beszel
+    stack_headroom:
+      name: Beszel Stack Headroom
+```
+
+The value is reported in bytes after authentication attempts. Lower values
+mean the task came closer to exhausting its stack.
 
 ## Reported data
 
@@ -116,6 +131,7 @@ The complete development configurations are in `examples/`. Create
 
 ```sh
 esphome compile examples/esp32.yaml
+esphome compile examples/esp32-c3.yaml
 esphome compile examples/esp32-s3.yaml
 ```
 

@@ -1,0 +1,33 @@
+esphome:
+  name: beszel-esp32-c3
+
+esp32:
+  board: esp32-c3-devkitm-1
+  variant: ESP32C3
+  framework:
+    type: esp-idf
+
+external_components:
+  - source:
+      type: local
+      path: ../components
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+logger:
+
+sensor:
+  - platform: beszel
+    stack_headroom:
+      name: Beszel Stack Headroom
+
+api:
+  encryption:
+    key: !secret noise_key
+
+beszel:
+  hub: https://beszel.example.com
+  token: !secret beszel_token
+  key: !secret beszel_hub_public_key
