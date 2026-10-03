@@ -87,6 +87,9 @@ bool CborWriter::head(uint8_t major, uint64_t value) {
 bool CborWriter::map(size_t count) { return head(5, count); }
 bool CborWriter::array(size_t count) { return head(4, count); }
 bool CborWriter::uint64(uint64_t value) { return head(0, value); }
+bool CborWriter::int64(int64_t value) {
+  return value < 0 ? head(1, static_cast<uint64_t>(-(value + 1))) : head(0, static_cast<uint64_t>(value));
+}
 bool CborWriter::boolean(bool value) { return put(value ? 0xf5 : 0xf4); }
 bool CborWriter::bytes(const uint8_t *value, size_t size) { return head(2, size) && put(value, size); }
 bool CborWriter::text(const char *value) { size_t n = strlen(value); return head(3, n) && put(reinterpret_cast<const uint8_t *>(value), n); }
@@ -195,7 +198,7 @@ bool encode_system_stats(CborWriter &writer, const SystemMetrics &metrics,
                          double flash_gib, double flash_used_gib, double flash_used_pct) {
   // Keep the declared map size beside the fields so protocol changes are easy
   // to audit. Numeric keys are fixed by Beszel's CombinedData wire format.
-  if (!writer.map(7 + (metrics.has_temperature ? 1 : 0))) return false;
+  if (!writer.map(7 + (metrics.has_temperature ? 1 : 0) + (metrics.has_wifi_rssi ? 1 : 0))) return false;
   if (!writer.uint64(0) || !writer.floating(0) ||
       !writer.uint64(2) || !writer.floating(total_gib) ||
       !writer.uint64(3) || !writer.floating(used_gib) ||
@@ -205,21 +208,56 @@ bool encode_system_stats(CborWriter &writer, const SystemMetrics &metrics,
       !writer.uint64(11) || !writer.floating(flash_used_pct))
     return false;
   // Key 20 is Beszel's map of sensor name to degrees Celsius.
-  return !metrics.has_temperature ||
-         (writer.uint64(20) && writer.map(1) && writer.text("SoC") &&
-          writer.floating(metrics.temperature));
+  if (metrics.has_temperature &&
+      (!writer.uint64(20) || !writer.map(1) || !writer.text("SoC") ||
+       !writer.floating(metrics.temperature))) return false;
+  // Beszel 0.21 uses key 40 for historical RSSI, independently of monitor sync.
+  return !metrics.has_wifi_rssi ||
+         (writer.uint64(40) && writer.map(1) && writer.text("sta") && writer.int64(metrics.wifi_rssi));
+}
+
+bool valid_wifi_ssid(const std::array<char, 33> &ssid) {
+  size_t size = 0;
+  while (size < ssid.size() && ssid[size] != '\0') size++;
+  if (size == 0 || size > 32) return false;
+  // SSIDs may contain arbitrary octets, but CBOR text must be valid UTF-8.
+  for (size_t i = 0; i < size;) {
+    const uint8_t lead = static_cast<uint8_t>(ssid[i++]);
+    if (lead < 0x80) continue;
+    const size_t continuation = lead >= 0xc2 && lead <= 0xdf ? 1 :
+                                lead >= 0xe0 && lead <= 0xef ? 2 :
+                                lead >= 0xf0 && lead <= 0xf4 ? 3 : 0;
+    if (continuation == 0 || continuation > size - i) return false;
+    uint32_t codepoint = lead & (0x3f >> continuation);
+    for (size_t j = 0; j < continuation; j++) {
+      const uint8_t byte = static_cast<uint8_t>(ssid[i++]);
+      if ((byte & 0xc0) != 0x80) return false;
+      codepoint = (codepoint << 6) | (byte & 0x3f);
+    }
+    const uint32_t minimum = continuation == 1 ? 0x80 : continuation == 2 ? 0x800 : 0x10000;
+    if (codepoint < minimum || codepoint > 0x10ffff ||
+        (codepoint >= 0xd800 && codepoint <= 0xdfff)) return false;
+  }
+  return true;
 }
 
 bool encode_host_stats(CborWriter &writer, const SystemMetrics &metrics, double used_pct, double flash_used_pct) {
-  if (!writer.map(8)) return false;
-  return writer.uint64(3) && writer.uint64(metrics.cores) &&
+  if (!writer.map(8 + (metrics.has_wifi_rssi ? 1 : 0))) return false;
+  if (!(writer.uint64(3) && writer.uint64(metrics.cores) &&
          writer.uint64(5) && writer.uint64(metrics.uptime_seconds) &&
          writer.uint64(6) && writer.floating(0) &&
          writer.uint64(7) && writer.floating(used_pct) &&
          writer.uint64(8) && writer.floating(flash_used_pct) &&
          writer.uint64(10) && writer.text("0.19.0") &&
          writer.uint64(18) && writer.uint64(0) &&
-         writer.uint64(20) && writer.uint64(2);
+         writer.uint64(20) && writer.uint64(2))) return false;
+  // The Hub needs current interface info as well as history to show its chart.
+  if (!metrics.has_wifi_rssi) return true;
+  const bool has_ssid = valid_wifi_ssid(metrics.wifi_ssid);
+  if (!writer.uint64(26) || !writer.map(1) || !writer.text("sta") ||
+      !writer.map(has_ssid ? 2 : 1)) return false;
+  if (has_ssid && (!writer.uint64(0) || !writer.text(metrics.wifi_ssid.data()))) return false;
+  return writer.uint64(1) && writer.floating(metrics.wifi_rssi);
 }
 
 bool encode_system_details(CborWriter &writer, const SystemMetrics &metrics) {

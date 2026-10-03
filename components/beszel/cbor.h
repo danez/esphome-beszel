@@ -39,6 +39,7 @@ class CborWriter {
   bool uint64(uint64_t value);
   bool boolean(bool value);
   bool bytes(const uint8_t *value, size_t size);
+  bool int64(int64_t value);
   bool text(const char *value);
   bool text(const std::string &value) { return text(value.c_str()); }
   bool floating(double value);
@@ -84,6 +85,9 @@ struct SystemMetrics {
   // because this first implementation reports only the on-chip sensor.
   bool has_temperature{false};
   double temperature{0};
+  bool has_wifi_rssi{false};
+  int8_t wifi_rssi{0};
+  std::array<char, 33> wifi_ssid{};
 };
 
 bool decode_hub_request(const uint8_t *data, size_t size, HubRequest &request);

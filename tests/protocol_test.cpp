@@ -144,6 +144,72 @@ static void temperature_data_response() {
   assert(std::string(reinterpret_cast<char *>(output), written) == expected);
 }
 
+static void wifi_data_response() {
+  uint8_t output[512]{};
+  size_t written = 0;
+  auto metrics = populated_metrics();
+  metrics.has_wifi_rssi = true;
+  metrics.wifi_rssi = -67;
+  assert(esphome::beszel::encode_data_response(output, sizeof(output), 42, metrics, &written));
+  auto expected = hex_bytes(beszel::test_fixtures::wifi_data_response);
+  assert(std::string(reinterpret_cast<char *>(output), written) == expected);
+  assert(!esphome::beszel::encode_data_response(output, written - 1, 42, metrics));
+
+  metrics.has_temperature = true;
+  metrics.temperature = 42.5;
+  assert(esphome::beszel::encode_data_response(output, sizeof(output), 42, metrics, &written));
+  expected = hex_bytes(beszel::test_fixtures::wifi_temperature_data_response);
+  assert(std::string(reinterpret_cast<char *>(output), written) == expected);
+
+  // A lost/unavailable reading must omit both Wi-Fi maps, even with stale RSSI.
+  metrics.has_wifi_rssi = false;
+  assert(esphome::beszel::encode_data_response(output, sizeof(output), 42, metrics, &written));
+  expected = hex_bytes(beszel::test_fixtures::temperature_data_response);
+  assert(std::string(reinterpret_cast<char *>(output), written) == expected);
+
+  // Native RSSI needs CBOR negative integers, including the int8 lower limit.
+  const int64_t values[] = {INT64_MIN, -128, -67, -24, -1, 0, 127, INT64_MAX};
+  const char *encodings[] = {"3b7fffffffffffffff", "387f", "3842", "37", "20", "00", "187f",
+                             "1b7fffffffffffffff"};
+  for (size_t i = 0; i < sizeof(values) / sizeof(values[0]); i++) {
+    esphome::beszel::CborWriter writer(output, sizeof(output));
+    assert(writer.int64(values[i]));
+    assert(std::string(reinterpret_cast<char *>(output), writer.size()) == hex_bytes(encodings[i]));
+  }
+}
+
+static void wifi_ssid_data_response() {
+  uint8_t output[512]{};
+  size_t written = 0;
+  auto metrics = populated_metrics();
+  metrics.has_wifi_rssi = true;
+  metrics.wifi_rssi = -67;
+  auto encode_ssid = [&](const std::string &ssid) {
+    metrics.wifi_ssid.fill('\0');
+    ssid.copy(metrics.wifi_ssid.data(), metrics.wifi_ssid.size());
+    assert(esphome::beszel::encode_data_response(output, sizeof(output), 42, metrics, &written));
+    return std::string(reinterpret_cast<char *>(output), written);
+  };
+  assert(encode_ssid("lab-wifi") == hex_bytes(beszel::test_fixtures::wifi_ssid_data_response));
+  assert(!esphome::beszel::encode_data_response(output, written - 1, 42, metrics));
+
+  const std::string invalid[] = {"", "\x80", "\xc0\xaf", "\xe0\x80\xaf", "\xed\xa0\x80",
+                                 "\xf0\x80\x80\xaf", "\xf4\x90\x80\x80", "\xf5\x80\x80\x80",
+                                 "\xe2\x28\xa1", "\xf0\x9f\x93", std::string(33, 'x')};
+  for (const auto &ssid : invalid)
+    assert(encode_ssid(ssid) == hex_bytes(beszel::test_fixtures::wifi_data_response));
+
+  const std::string valid[] = {std::string(32, 'x'), "Lab-\xc3\xa4-\xe2\x82\xac-\xf0\x9f\x93\xb6",
+                               "\xf4\x8f\xbf\xbf", "<img src=x onerror=alert(1)>",
+                               "'; DROP TABLE systems; --", "$(touch /tmp/pwn)"};
+  for (const auto &ssid : valid) {
+    const auto response = encode_ssid(ssid);
+    assert(response.find(ssid) != std::string::npos);
+  }
+  metrics.has_wifi_rssi = false;
+  assert(encode_ssid("lab-wifi") == hex_bytes(beszel::test_fixtures::populated_data_response));
+}
+
 static void tolerant_unknown_keys_and_strict_types() {
   const std::string unknown = hex_bytes(
       "a4000101a3005840000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f01f509f4020709f4");
@@ -207,6 +273,8 @@ int main() {
   malformed_fixtures_fail();
   populated_data_response();
   temperature_data_response();
+  wifi_data_response();
+  wifi_ssid_data_response();
   tolerant_unknown_keys_and_strict_types();
   map_order_and_duplicate_keys();
 }

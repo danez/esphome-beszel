@@ -1,12 +1,12 @@
 # ESPHome Beszel
 
-An ESPHome external component that connects an ESP32 directly to a Beszel Hub
-as a lightweight outbound WebSocket agent. It does not require an inbound port
-or a separate Beszel agent process.
+An ESPHome external component that connects an ESP32 directly to a Beszel Hub as
+a lightweight outbound WebSocket agent. It does not require an inbound port or a
+separate Beszel agent process.
 
 ## Requirements
 
-- [Beszel Hub](https://beszel.dev/) 0.19.x or 0.20.x
+- [Beszel Hub](https://beszel.dev/) 0.19.x, 0.20.x, or 0.21.x
 - [ESPHome](https://github.com/esphome/esphome) 2026.9.0
 - [ESP-IDF](https://github.com/espressif/esp-idf) framework
 - ESP32, ESP32-C3, or ESP32-S3
@@ -14,8 +14,7 @@ or a separate Beszel agent process.
 Arduino and other ESP32 variants are rejected during configuration. ESP32-C3
 support is compile-tested but still requires the RISC-V hardware validation
 listed in `work/revied.md`. The component currently pins the ESPHome libsodium
-package used by ESPHome 2026.9,
-so other ESPHome releases are not supported yet.
+package used by ESPHome 2026.9, so other ESPHome releases are not supported yet.
 
 ## Installation
 
@@ -36,9 +35,8 @@ beszel:
   key: !secret beszel_hub_public_key
 ```
 
-`hub` may be the Hub base URL or the complete
-`/api/beszel/agent-connect` endpoint. HTTPS is converted to secure WebSocket
-transport automatically.
+`hub` may be the Hub base URL or the complete `/api/beszel/agent-connect`
+endpoint. HTTPS is converted to secure WebSocket transport automatically.
 
 To register one device manually, open **Add System** in Beszel and copy its
 token and Ed25519 public key. To let the device create its own system, enable a
@@ -59,11 +57,11 @@ text_sensor:
 
 It publishes only `disconnected`, `connecting`, `authenticating`, or
 `connected`. State publication occurs from ESPHome's main loop, not from the
-WebSocket callback task. Its entity category defaults to `diagnostic` and can
-be overridden in the entity configuration.
+WebSocket callback task. Its entity category defaults to `diagnostic` and can be
+overridden in the entity configuration.
 
-The lowest observed WebSocket-task stack headroom during authentication can
-also be exposed as a diagnostic sensor:
+The lowest observed WebSocket-task stack headroom during authentication can also
+be exposed as a diagnostic sensor:
 
 ```yaml
 sensor:
@@ -72,9 +70,9 @@ sensor:
       name: Beszel Stack Headroom
 ```
 
-The value is reported in bytes after authentication attempts. Lower values
-mean the task came closer to exhausting its stack. Its entity category also
-defaults to `diagnostic` and can be overridden.
+The value is reported in bytes after authentication attempts. Lower values mean
+the task came closer to exhausting its stack. Its entity category also defaults
+to `diagnostic` and can be overridden.
 
 ## Reported data
 
@@ -84,6 +82,7 @@ The component reports:
 - physical flash capacity and running firmware image size
 - monotonic uptime
 - built-in chip temperature as `SoC`, when available
+- Wi-Fi signal strength in dBm and connected SSID on Beszel 0.21 or newer
 - ESPHome and ESP-IDF versions, chip model, core count, and node name
 
 CPU usage, network throughput, filesystem usage, containers, load, swap,
@@ -93,14 +92,19 @@ the transmitted byte and GiB values are correct. Beszel 0.20 network monitoring
 is not supported; the component advertises the 0.19 agent capability level so
 the Hub does not expose or request that feature.
 
+Wi-Fi signal reporting is automatic and independent of network monitoring. It
+uses the station interface name `sta` and includes the connected SSID when it is
+non-empty and valid UTF-8, matching the official agent. Failed or disconnected
+Wi-Fi readings are omitted; no extra ESPHome sensor is needed.
+
 ## Flash usage
 
 On an `esp32dev` build with ESPHome 2026.9.0 and ESP-IDF 5.5.5, adding the
-component increases the firmware image by approximately 139 KiB when ESPHome
-API encryption is enabled, or 150 KiB without API encryption. The smaller
-increase with API encryption is because libsodium is already linked into the
-firmware. These figures include the component's secure WebSocket, TLS, and
-cryptographic dependencies.
+component increases the firmware image by approximately 139 KiB when ESPHome API
+encryption is enabled, or 150 KiB without API encryption. The smaller increase
+with API encryption is because libsodium is already linked into the firmware.
+These figures include the component's secure WebSocket, TLS, and cryptographic
+dependencies.
 
 ## TLS and security
 
@@ -137,9 +141,9 @@ esphome compile examples/esp32-c3.yaml
 esphome compile examples/esp32-s3.yaml
 ```
 
-The ESP32-S3 example also demonstrates sharing ESPHome's
-`internal_temperature` sensor. Without one, Beszel creates a hidden reader; it
-never exposes a second Home Assistant temperature entity.
+The ESP32-S3 example also demonstrates sharing ESPHome's `internal_temperature`
+sensor. Without one, Beszel creates a hidden reader; it never exposes a second
+Home Assistant temperature entity.
 
 ## License
 
