@@ -20,6 +20,10 @@
 #include <cmath>
 #include <cstring>
 
+#ifdef USE_WIFI
+#include "esp_wifi.h"
+#endif
+
 #ifdef CONFIG_IDF_TARGET_ESP32
 // The original ESP32 exposes only this ROM API; ESP-IDF has no supported
 // temperature-sensor driver for that chip.
@@ -407,6 +411,16 @@ void Beszel::consume_message_(esp_websocket_client_handle_t client, const uint8_
 #endif
     metrics.esphome_version = "ESPHome " ESPHOME_VERSION;
     metrics.cores = portNUM_PROCESSORS;
+#ifdef USE_WIFI
+    // Query the connected AP directly instead of reading ESPHome's main-task
+    // Wi-Fi state from this callback. Failed/disconnected reads omit the metric.
+    wifi_ap_record_t ap_info{};
+    if (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK) {
+      metrics.has_wifi_rssi = true;
+      metrics.wifi_rssi = ap_info.rssi;
+      memcpy(metrics.wifi_ssid.data(), ap_info.ssid, sizeof(ap_info.ssid));
+    }
+#endif
     float temperature;
     if (this->temperature_available_ && this->read_internal_temperature_(temperature)) {
       metrics.has_temperature = true;
