@@ -7,14 +7,13 @@ separate Beszel agent process.
 ## Requirements
 
 - [Beszel Hub](https://beszel.dev/) 0.19.x, 0.20.x, or 0.21.x
-- [ESPHome](https://github.com/esphome/esphome) 2026.9.0
+- [ESPHome](https://github.com/esphome/esphome) 2026.9.0 & 2026.9.1
 - [ESP-IDF](https://github.com/espressif/esp-idf) framework
 - ESP32, ESP32-C3, or ESP32-S3
 
-Arduino and other ESP32 variants are rejected during configuration. ESP32-C3
-support is compile-tested but still requires the RISC-V hardware validation
-listed in `work/revied.md`. The component currently pins the ESPHome libsodium
-package used by ESPHome 2026.9, so other ESPHome releases are not supported yet.
+Arduino and other ESP32 variants are rejected during configuration. The
+component currently pins the ESPHome libsodium package used by ESPHome 2026.9,
+so other ESPHome releases are not supported yet.
 
 ## Installation
 
