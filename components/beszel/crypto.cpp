@@ -22,14 +22,8 @@ bool initialize_crypto() {
 
 bool verify_ed25519(const uint8_t signature[64], const uint8_t *message, size_t length,
                     const uint8_t public_key[32]) {
-#ifdef USE_ESP32
-  // ESPHome's embedded package omits the generic crypto_sign wrapper. The
-  // pinned verifier translation unit supplies this public Ed25519 entry point.
+  // The embedded package exposes the Ed25519 API without the generic wrapper.
   return crypto_sign_ed25519_verify_detached(signature, message, static_cast<unsigned long long>(length), public_key) == 0;
-#else
-  // Desktop tests use the complete system libsodium API.
-  return crypto_sign_verify_detached(signature, message, static_cast<unsigned long long>(length), public_key) == 0;
-#endif
 }
 
 std::string factory_mac_fingerprint(const uint8_t mac[6]) {

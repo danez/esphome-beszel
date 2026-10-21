@@ -7,13 +7,14 @@ separate Beszel agent process.
 ## Requirements
 
 - [Beszel Hub](https://beszel.dev/) 0.19.x, 0.20.x, or 0.21.x
-- [ESPHome](https://github.com/esphome/esphome) 2026.9.0 & 2026.9.1
+- [ESPHome](https://github.com/esphome/esphome) 2026.10.0 or newer
 - [ESP-IDF](https://github.com/espressif/esp-idf) framework
 - ESP32, ESP32-C3, or ESP32-S3
 
 Arduino and other ESP32 variants are rejected during configuration. The
-component currently pins the ESPHome libsodium package used by ESPHome 2026.9,
-so other ESPHome releases are not supported yet.
+component uses ESPHome's selected managed libsodium version, shared with API
+encryption (1.10021.12 in ESPHome 2026.10.0). Earlier ESPHome releases require an
+earlier component revision.
 
 ## Installation
 

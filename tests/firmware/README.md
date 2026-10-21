@@ -1,6 +1,6 @@
 # Firmware Ed25519 verifier test
 
-These configurations exercise the exact reduced-libsodium verifier compiled
+These configurations exercise the managed libsodium Ed25519 verifier compiled
 into ESPHome firmware. They use fixed public test vectors, fake Beszel
 credentials, and disabled Wi-Fi.
 

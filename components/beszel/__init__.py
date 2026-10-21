@@ -115,6 +115,7 @@ def validate_internal_temperature_count(config):
 
 
 CONFIG_SCHEMA = cv.All(
+    cv.require_esphome_version(2026, 10, 0),
     cv.Schema(
         {
             cv.GenerateID(): cv.declare_id(Beszel),
@@ -130,16 +131,14 @@ FINAL_VALIDATE_SCHEMA = validate_internal_temperature_count
 
 
 async def to_code(config):
+    from esphome.components.noise import LIBSODIUM_VERSION
+
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     esp32.require_certificate_bundle()
     esp32.add_idf_component(name="espressif/esp_websocket_client", ref="1.8.0")
-    # Declare this directly even when API encryption also brings it through
-    # noise-c; keep the exact version aligned with the supported ESPHome release.
-    cg.add_library("esphome/libsodium", "1.10021.11")
-    # ESPHome places external IDF archives before the generated source archive.
-    # Keep the fingerprint hash symbol live so the static linker extracts it.
-    cg.add_build_flag("-Wl,--undefined=crypto_hash_sha256")
+    # Follow ESPHome's version even when API encryption is not configured.
+    esp32.add_idf_component(name="esphome/libsodium", ref=LIBSODIUM_VERSION)
     cg.add(var.set_hub(config[CONF_HUB]))
     cg.add(var.set_token(config[CONF_TOKEN]))
     key = ", ".join(f"0x{byte:02x}" for byte in config[CONF_KEY])
