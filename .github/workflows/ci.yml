@@ -21,6 +21,8 @@ jobs:
           /tmp/protocol_test
           g++ $CXXFLAGS tests/websocket_message_test.cpp components/beszel/websocket_message.cpp -o /tmp/websocket_message_test
           /tmp/websocket_message_test
+          g++ $CXXFLAGS -pthread -Itests/stubs tests/websocket_stop_test.cpp components/beszel/websocket_stop.cpp -o /tmp/websocket_stop_test
+          /tmp/websocket_stop_test
           g++ $CXXFLAGS tests/crypto_test.cpp components/beszel/crypto.cpp -lsodium -o /tmp/crypto_test
           /tmp/crypto_test
           python tests/config_validation_test.py

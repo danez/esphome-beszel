@@ -160,6 +160,8 @@ void Beszel::setup() {
 }
 
 void Beszel::loop() {
+  if (this->shutting_down_.load())
+    return;
   const uint32_t stack_headroom = this->stack_headroom_.load();
   if (this->stack_headroom_sensor_ != nullptr && stack_headroom != UINT32_MAX &&
       stack_headroom != this->published_stack_headroom_) {
@@ -201,23 +203,15 @@ void Beszel::loop() {
       this->set_pending_status_(CONNECTING);
     }
   }
-  if (!network_available)
-    return;
-  if (this->reconnect_requested_.exchange(false) && this->client_ != nullptr) {
-    // Run this outside the callback: stop waits for the WebSocket task, and
-    // ESP-IDF explicitly disallows invoking it from that same task.
+  if (this->stop_.pending() || (this->reconnect_requested_.load() && this->client_ != nullptr)) {
     this->clear_authentication_();
-    this->set_pending_status_(CONNECTING);
-    esp_websocket_client_stop(this->client_);
-    if (esp_websocket_client_start(this->client_) != ESP_OK) {
-      ESP_LOGE(TAG, "WebSocket restart failed");
-      esp_websocket_client_destroy(this->client_);
-      this->client_ = nullptr;
-      this->set_pending_status_(DISCONNECTED);
-    }
+    if (!this->stop_.pending())
+      this->set_pending_status_(CONNECTING);
+    if (this->stop_client_())
+      this->reconnect_requested_.store(false);
     return;
   }
-  if (this->client_ != nullptr || this->shutting_down_.load())
+  if (!network_available || this->client_ != nullptr)
     return;
 
   esp_websocket_client_config_t config{};
@@ -263,14 +257,29 @@ void Beszel::loop() {
 void Beszel::on_shutdown() {
   this->shutting_down_.store(true);
   this->clear_authentication_();
-  if (this->client_ != nullptr) {
-    // stop() waits for the WebSocket task and its callbacks to exit, so the
-    // main-task-owned handle cannot be freed while a callback is still using it.
-    esp_websocket_client_stop(this->client_);
-    esp_websocket_client_destroy(this->client_);
-    this->client_ = nullptr;
+  this->teardown();
+}
+
+bool Beszel::stop_client_() {
+  if (this->client_ == nullptr)
+    return true;
+  if (!this->stop_.pending()) {
+    if (!this->stop_.start(this->client_))
+      ESP_LOGW(TAG, "Unable to allocate WebSocket cleanup task; will retry");
+    return false;
   }
+  if (!this->stop_.poll())
+    return false;
+  this->client_ = nullptr;
+  return true;
+}
+
+bool Beszel::teardown() {
+  if (!this->stop_client_())
+    return false;
+  // An already-running callback may still read temperature during shutdown.
   this->shutdown_internal_temperature_();
+  return true;
 }
 
 void Beszel::websocket_event_(void *arg, esp_event_base_t, int32_t event_id, void *event_data) {

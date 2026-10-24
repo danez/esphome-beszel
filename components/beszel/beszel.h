@@ -16,6 +16,7 @@
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "cbor.h"
 #include "websocket_message.h"
+#include "websocket_stop.h"
 
 namespace esphome::beszel {
 
@@ -24,6 +25,7 @@ class Beszel : public Component {
   void setup() override;
   void loop() override;
   void on_shutdown() override;
+  bool teardown() override;
   void set_hub(const char *hub) { this->hub_ = hub; }
   void set_token(const char *token) { this->token_ = token; }
   void set_public_key(const std::array<uint8_t, 32> &key) { this->public_key_ = key; }
@@ -41,6 +43,7 @@ class Beszel : public Component {
   bool read_internal_temperature_(float &temperature) const;
   void shutdown_internal_temperature_();
   void record_stack_headroom_();
+  bool stop_client_();
   bool handle_check_fingerprint_(const HubRequest &request, uint8_t *output, size_t output_size,
                                  const char *node_name, size_t *written = nullptr);
   static void websocket_event_(void *arg, esp_event_base_t base, int32_t event_id, void *event_data);
@@ -52,11 +55,13 @@ class Beszel : public Component {
   std::string token_;
   std::array<uint8_t, 32> public_key_{};
   std::atomic<bool> authenticated_{false};
-  // Owned exclusively by the ESPHome main task. Callbacks use event.client.
+  // Main task starts the client; stop_ owns it during asynchronous cleanup.
+  // Callbacks use event.client until cleanup has joined their task.
   esp_websocket_client_handle_t client_{nullptr};
+  WebSocketStop stop_;
   std::atomic<bool> shutting_down_{false};
   // ESP-IDF forbids stopping its client from an event callback. Invalid input
-  // requests a main-loop reconnect instead.
+  // requests asynchronous cleanup and a main-loop reconnect instead.
   std::atomic<bool> reconnect_requested_{false};
   // loop() detects network transitions, but the WebSocket callback owns the
   // fragment assembler. Hand reset requests across tasks instead of racing it.
