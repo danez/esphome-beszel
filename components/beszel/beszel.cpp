@@ -409,7 +409,7 @@ void Beszel::consume_message_(esp_websocket_client_handle_t client, const uint8_
     }
     metrics.uptime_seconds = static_cast<uint64_t>(esp_timer_get_time()) / 1000000ULL;
     metrics.hostname = App.get_name().c_str();
-    metrics.idf_version = esp_get_idf_version();
+    metrics.idf_version = "ESP-IDF " IDF_VER;
 #ifdef CONFIG_IDF_TARGET_ESP32C3
     metrics.chip_model = "ESP32-C3";
     metrics.architecture = "riscv";

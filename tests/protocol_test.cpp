@@ -75,7 +75,7 @@ static esphome::beszel::SystemMetrics populated_metrics() {
   metrics.flash_used = 1024 * 1024;
   metrics.uptime_seconds = 123456;
   metrics.hostname = "esp32-lab";
-  metrics.idf_version = "v5.5.5";
+  metrics.idf_version = "ESP-IDF v5.5.5";
   metrics.chip_model = "ESP32";
   metrics.esphome_version = "ESPHome 2026.8.2";
   metrics.cores = 2;
