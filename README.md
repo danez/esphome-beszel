@@ -6,7 +6,7 @@ separate Beszel agent process.
 
 ## Requirements
 
-- [Beszel Hub](https://beszel.dev/) 0.19.x, 0.20.x, or 0.21.x
+- [Beszel Hub](https://beszel.dev/) 0.21.1 or newer
 - [ESPHome](https://github.com/esphome/esphome) 2026.10.0 or newer
 - [ESP-IDF](https://github.com/espressif/esp-idf) framework
 - ESP32, ESP32-C3, or ESP32-S3
@@ -78,19 +78,21 @@ to `diagnostic` and can be overridden.
 
 The component reports:
 
-- internal heap total, usage, and percentage
+- internal heap total and usage in exact bytes, plus usage percentage
 - physical flash capacity and running firmware image size
 - monotonic uptime
 - built-in chip temperature as `SoC`, when available
-- Wi-Fi signal strength in dBm and connected SSID on Beszel 0.21 or newer
-- ESPHome and ESP-IDF versions, chip model, core count, and node name
+- Wi-Fi signal strength in dBm and connected SSID
+- ESPHome and ESP-IDF versions, chip model, core and CPU socket counts, and node name
 
 CPU usage, network throughput, filesystem usage, containers, load, swap,
-battery, and other unavailable metrics are deliberately not fabricated. Small
-heap values may appear rounded incorrectly in current Beszel charts even though
-the transmitted byte and GiB values are correct. Beszel 0.20 network monitoring
-is not supported; the component advertises the 0.19 agent capability level so
-the Hub does not expose or request that feature.
+battery, and other unavailable metrics are deliberately not fabricated. Memory
+uses Beszel 0.21.1's byte counters so sub-megabyte heaps retain their precision
+in charts and aggregated records. Deprecated GiB memory fields are not sent;
+older Hubs are no longer supported. Network monitoring is not supported; the
+component advertises the 0.19 agent capability level so the Hub does not expose
+or request that feature. This capability level is independent of the minimum
+supported Hub version.
 
 Wi-Fi signal reporting is automatic and independent of network monitoring. It
 uses the station interface name `sta` and includes the connected SSID when it is

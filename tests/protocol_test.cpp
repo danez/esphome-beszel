@@ -144,6 +144,51 @@ static void temperature_data_response() {
   assert(std::string(reinterpret_cast<char *>(output), written) == expected);
 }
 
+static void byte_memory_data_response() {
+  using esphome::beszel::CborReader;
+  auto metrics = populated_metrics();
+  const uint64_t heaps[][2] = {{350600, 224800}, {0, 0}, {100, 101}, {UINT64_MAX, 0}};
+  for (const auto &heap : heaps) {
+    metrics.total_heap = heap[0];
+    metrics.free_heap = heap[1];
+    uint8_t output[512]{};
+    size_t written = 0;
+    assert(esphome::beszel::encode_data_response(output, sizeof(output), 42, metrics, &written));
+    CborReader response(output, written);
+    size_t count;
+    uint64_t key, id;
+    assert(response.map(count) && count == 2);
+    assert(response.uint64(key) && key == 0 && response.uint64(id) && id == 42);
+    assert(response.uint64(key) && key == 1 && response.map(count) && count == 4);
+    assert(response.uint64(key) && key == 0 && response.map(count));
+    bool found_memory = false;
+    for (size_t i = 0; i < count; i++) {
+      assert(response.uint64(key));
+      // Deprecated GiB memory and swap fields must not be sent.
+      assert(key < 2 || key > 8 || key == 4);
+      if (key != 41) {
+        assert(response.skip());
+        continue;
+      }
+      found_memory = true;
+      size_t items;
+      uint64_t total, used, cache, arc;
+      assert(response.array(items) && items == 4);
+      assert(response.uint64(total) && response.uint64(used) &&
+             response.uint64(cache) && response.uint64(arc));
+      assert(total == heap[0]);
+      assert(used == (heap[1] <= heap[0] ? heap[0] - heap[1] : 0));
+      assert(cache == 0 && arc == 0);
+    }
+    assert(found_memory);
+    // Also catch incorrect map lengths or trailing bytes after optional data.
+    for (size_t i = 0; i < 3; i++)
+      assert(response.uint64(key) && response.skip());
+    assert(response.done());
+    assert(!esphome::beszel::encode_data_response(output, written - 1, 42, metrics));
+  }
+}
+
 static void wifi_data_response() {
   uint8_t output[512]{};
   size_t written = 0;
@@ -273,6 +318,7 @@ int main() {
   malformed_fixtures_fail();
   populated_data_response();
   temperature_data_response();
+  byte_memory_data_response();
   wifi_data_response();
   wifi_ssid_data_response();
   tolerant_unknown_keys_and_strict_types();

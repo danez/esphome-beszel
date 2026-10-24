@@ -194,14 +194,12 @@ bool encode_response_start(CborWriter &writer, uint32_t id, uint64_t response_ke
 }
 
 bool encode_system_stats(CborWriter &writer, const SystemMetrics &metrics,
-                         double total_gib, double used_gib, double used_pct,
+                         uint64_t used, double used_pct,
                          double flash_gib, double flash_used_gib, double flash_used_pct) {
   // Keep the declared map size beside the fields so protocol changes are easy
   // to audit. Numeric keys are fixed by Beszel's CombinedData wire format.
-  if (!writer.map(7 + (metrics.has_temperature ? 1 : 0) + (metrics.has_wifi_rssi ? 1 : 0))) return false;
+  if (!writer.map(6 + (metrics.has_temperature ? 1 : 0) + (metrics.has_wifi_rssi ? 1 : 0))) return false;
   if (!writer.uint64(0) || !writer.floating(0) ||
-      !writer.uint64(2) || !writer.floating(total_gib) ||
-      !writer.uint64(3) || !writer.floating(used_gib) ||
       !writer.uint64(4) || !writer.floating(used_pct) ||
       !writer.uint64(9) || !writer.floating(flash_gib) ||
       !writer.uint64(10) || !writer.floating(flash_used_gib) ||
@@ -212,8 +210,11 @@ bool encode_system_stats(CborWriter &writer, const SystemMetrics &metrics,
       (!writer.uint64(20) || !writer.map(1) || !writer.text("SoC") ||
        !writer.floating(metrics.temperature))) return false;
   // Beszel 0.21 uses key 40 for historical RSSI, independently of monitor sync.
-  return !metrics.has_wifi_rssi ||
-         (writer.uint64(40) && writer.map(1) && writer.text("sta") && writer.int64(metrics.wifi_rssi));
+  if (metrics.has_wifi_rssi &&
+      (!writer.uint64(40) || !writer.map(1) || !writer.text("sta") || !writer.int64(metrics.wifi_rssi))) return false;
+  // Beszel 0.21.1: [total, used, buffer/cache, ZFS ARC] in exact bytes.
+  return writer.uint64(41) && writer.array(4) && writer.uint64(metrics.total_heap) &&
+         writer.uint64(used) && writer.uint64(0) && writer.uint64(0);
 }
 
 bool valid_wifi_ssid(const std::array<char, 33> &ssid) {
@@ -261,7 +262,7 @@ bool encode_host_stats(CborWriter &writer, const SystemMetrics &metrics, double 
 }
 
 bool encode_system_details(CborWriter &writer, const SystemMetrics &metrics) {
-  if (!writer.map(9)) return false;
+  if (!writer.map(10)) return false;
   return writer.uint64(0) && writer.text(metrics.hostname) &&
          writer.uint64(1) && writer.text(metrics.idf_version) &&
          writer.uint64(2) && writer.uint64(metrics.cores) &&
@@ -270,7 +271,8 @@ bool encode_system_details(CborWriter &writer, const SystemMetrics &metrics) {
          writer.uint64(5) && writer.uint64(0) &&
          writer.uint64(6) && writer.text(metrics.esphome_version) &&
          writer.uint64(7) && writer.text(metrics.architecture) &&
-         writer.uint64(9) && writer.uint64(metrics.total_heap);
+         writer.uint64(9) && writer.uint64(metrics.total_heap) &&
+         writer.uint64(12) && writer.uint64(1);  // One physical CPU package on all supported ESP32s.
 }
 
 bool finish_response(const CborWriter &writer, bool encoded, size_t *written) {
@@ -301,15 +303,13 @@ bool encode_error_response(uint8_t *data, size_t size, uint32_t id, const char *
 bool encode_data_response(uint8_t *data, size_t size, uint32_t id, const SystemMetrics &m, size_t *written) {
   CborWriter writer(data, size);
   const uint64_t used = m.free_heap <= m.total_heap ? m.total_heap - m.free_heap : 0;
-  const double total_gib = static_cast<double>(m.total_heap) / 1073741824.0;
-  const double used_gib = static_cast<double>(used) / 1073741824.0;
   const double used_pct = m.total_heap == 0 ? 0.0 : 100.0 * static_cast<double>(used) / static_cast<double>(m.total_heap);
   const uint64_t flash_used = m.flash_used <= m.flash_size ? m.flash_used : 0;
   const double flash_gib = static_cast<double>(m.flash_size) / 1073741824.0;
   const double flash_used_gib = static_cast<double>(flash_used) / 1073741824.0;
   const double flash_used_pct = m.flash_size == 0 ? 0.0 : 100.0 * static_cast<double>(flash_used) / static_cast<double>(m.flash_size);
   const bool encoded = encode_response_start(writer, id, 1) && writer.map(4) &&
-                       writer.uint64(0) && encode_system_stats(writer, m, total_gib, used_gib, used_pct,
+                       writer.uint64(0) && encode_system_stats(writer, m, used, used_pct,
                                                                flash_gib, flash_used_gib, flash_used_pct) &&
                        writer.uint64(1) && encode_host_stats(writer, m, used_pct, flash_used_pct) &&
                        writer.uint64(2) && writer.array(0) &&
